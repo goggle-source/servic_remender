@@ -1,0 +1,10 @@
+env: "local"
+grpc:
+  port: 8082
+  timeout: 10s
+  
+database:
+  "port": 5432
+  "user": "lox"
+  "pass": "password123"
+  "db_name": "grpc-reminder"
