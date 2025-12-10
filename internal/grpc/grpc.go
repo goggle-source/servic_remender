@@ -2,7 +2,7 @@ package grpc
 
 import (
 	"context"
-	"servic_remender/internal/models"
+	"servic_remender/internal/dto"
 
 	reminder "github.com/goggle-source/grpc-proto-reminder/gen"
 	"google.golang.org/grpc"
@@ -17,10 +17,10 @@ type serverAPI struct {
 }
 
 type Remind interface {
-	Create(ctx context.Context, req models.ServiceCreateRequest) (id int, err error)
-	Get(ctx context.Context, id int) (resp models.ServiceGetResponse, err error)
-	Update(ctx context.Context, req models.ServiceUpdateRequest) (resp models.ServiceUpdateResponse, err error)
-	Delete(ctx context.Context, id int) (err error)
+	Create(ctx context.Context, req dto.RequestCreategRPCInServic) (resp dto.ResponseCreategRPCInServic, err error)
+	Get(ctx context.Context, req dto.RequestGetgRPCInServic) (resp dto.ResponseGetgRPCInServic, err error)
+	Update(ctx context.Context, req dto.RequestUpdateGRPCInServic) (resp dto.ResponseUpdateGRPCInServic, err error)
+	Delete(ctx context.Context, req dto.RequestDeletegRRPCInServic) (err error)
 }
 
 func CreateServerAPi(gRPCServer *grpc.Server, rem Remind) {
@@ -40,34 +40,56 @@ func (s *serverAPI) Create(ctx context.Context, in *reminder.CreateRequest) (*re
 		return nil, status.Error(codes.InvalidArgument, "imvalid time type")
 	}
 
-	t := in.GetTimestamp().AsTime()
-	reqCreate := models.ServiceCreateRequest{}
-	reqCreate.Name = in.GetName()
-	reqCreate.Message = in.GetDescription()
-	reqCreate.Timestamp = t
-	reqCreate.Weekday = in.GetWeekday()
-	reqCreate.Notification_type = in.GetNotificationType()
+	nt := map[string]bool{
+		"tg":    false,
+		"email": false,
+	}
 
-	id, err := s.rem.Create(ctx, reqCreate)
+	for _, value := range in.GetNotificationType() {
+		if value == "email" {
+			nt[value] = true
+		}
+
+		if value == "tg" {
+			nt[value] = true
+		}
+	}
+
+	t := in.GetTimestamp().AsTime()
+	var reqCreate dto.RequestCreategRPCInServic
+	reqCreate.Name = in.GetName()
+	reqCreate.Description = in.GetDescription()
+	reqCreate.Timestamp = t
+	reqCreate.UserID = int(in.GetUserId())
+	reqCreate.NotificationType = nt
+
+	resp, err := s.rem.Create(ctx, reqCreate)
 	if err != nil {
+		// добавить validate для servicLayer errors
 		return nil, status.Error(codes.Internal, "failed to create reminder")
 	}
 
-	return &reminder.CreateResponse{Id: int64(id)}, nil
+	return &reminder.CreateResponse{Id: int64(resp.ReminderID)}, nil
 }
 
 func (s *serverAPI) Get(ctx context.Context, in *reminder.GetRequest) (*reminder.GetResponse, error) {
 
-	result, err := s.rem.Get(ctx, int(in.GetId()))
+	reqGet := dto.RequestGetgRPCInServic{
+		ReminderID: int(in.GetId()),
+	}
+
+	result, err := s.rem.Get(ctx, reqGet)
 	if err != nil {
+		// добавить validate для servicLayer errors
 		return nil, status.Error(codes.Internal, "failed to get")
 	}
 
+	nt := dto.GRPCInServicMapInSliceString(result.NotificationType)
+
 	r := reminder.GetResponse{
 		Name:             result.Name,
-		Description:      result.Message,
-		Weekday:          result.Weekday,
-		NotificationType: result.Notification_type,
+		Description:      result.Description,
+		NotificationType: nt,
 		Timestamp:        timestamppb.New(result.Timestamp),
 	}
 
@@ -87,33 +109,41 @@ func (s *serverAPI) Update(ctx context.Context, in *reminder.UpdateRequest) (*re
 		return nil, status.Error(codes.InvalidArgument, "imvalid time type")
 	}
 
+	nt := dto.GRPCInServicSliceStringInMap(in.GetNotificationType())
+
 	t := in.GetTimestamp().AsTime()
-	reqUpdate := models.ServiceUpdateRequest{}
-	reqUpdate.ID = int(in.GetId())
+	reqUpdate := dto.RequestUpdateGRPCInServic{}
+	reqUpdate.ReminderID = int(in.GetId())
 	reqUpdate.Name = in.GetName()
-	reqUpdate.Message = in.GetDescription()
-	reqUpdate.Timestamp = t
-	reqUpdate.Weekday = in.GetWeekday()
-	reqUpdate.Notification_type = in.GetNotificationType()
+	reqUpdate.Description = in.GetDescription()
+	reqUpdate.TimeStamp = t
+	reqUpdate.NotificationType = nt
 
 	resp, err := s.rem.Update(ctx, reqUpdate)
 	if err != nil {
+		// добавить validate для servicLayer errors
 		return nil, status.Error(codes.InvalidArgument, "failed to update")
 	}
 
+	nt2 := dto.GRPCInServicMapInSliceString(resp.NotificationType)
+
 	return &reminder.UpdateResponse{
-		Id:               int64(resp.ID),
+		Id:               int64(resp.Reminder_id),
 		Name:             resp.Name,
-		Description:      resp.Message,
-		Weekday:          resp.Weekday,
-		NotificationType: resp.Notification_type,
+		Description:      resp.Description,
+		NotificationType: nt2,
 	}, nil
 }
 
 func (s *serverAPI) Delete(ctx context.Context, in *reminder.DeleteRequest) (*reminder.DeleteResponse, error) {
 
-	err := s.rem.Delete(ctx, int(in.GetId()))
+	reqDelete := dto.RequestDeletegRRPCInServic{
+		ReminderID: int(in.GetId()),
+	}
+
+	err := s.rem.Delete(ctx, reqDelete)
 	if err != nil {
+		// добавить validate для servicLayer errors
 		return nil, status.Error(codes.Internal, "failed to delete")
 	}
 	return &reminder.DeleteResponse{}, nil

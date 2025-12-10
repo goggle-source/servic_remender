@@ -2,11 +2,12 @@ package domain
 
 import "time"
 
-/*структура reminder описывает анпоминание
+/*структура reminder описывает напоминание
 Name - название напоминание, обязательно должно быть и иметь размер максимальный размер - 300
 Description - описание напоминания, оно уже не обязательно, максимальный размер - 300
 userID - id пользователя, которму и принадлежит это напоминание
-Timestamp - время, когда должно сработать напоминание, обязательно должно быть и не должна
+Timestamp - время, когда должно сработать напоминание(в нем должнен быть минуты, часы, дни, месяцы, годы),
+обязательно должно быть и не должна
 быть меньше текущей даты (например: 1.02.15, текущая дата: 1.03.15, так нельзя!)
 Notification_type - список методов доставки напоминания до пользователя(email, tg),
 хотя бы 1 из способов должен быть доступен
@@ -17,6 +18,19 @@ type Reminder struct {
 	Description string
 	Timestamp   time.Time
 	Nt          Notification_type
+}
+
+type Notification_type struct {
+	Email
+	Tg
+}
+
+type Email struct {
+	email string
+}
+
+type Tg struct {
+	tg string
 }
 
 func NewReminder(name string, UserID int, Description string, timeStamp time.Time, Nt map[string]bool) (Reminder, error) {
@@ -45,30 +59,25 @@ func NewReminder(name string, UserID int, Description string, timeStamp time.Tim
 func (r *Reminder) Validate() error {
 
 	if !r.Timestamp.After(time.Now()) {
-		return InvalidTimeStamp
+		return ErrInvalidTimeStamp
 	}
 
 	//Потом нужно добавить проверку userID, как будет создан сервис user
 
 	if len(r.Name) == 0 {
-		return EqualName
+		return ErrEqualName
 	}
 
 	if len(r.Description) > 300 {
-		return ErrMaxParameter
+		return ErrMaxDescription
 	}
 
 	if len(r.Name) > 300 {
-		return ErrMaxParameter
+		return ErrMaxName
 	}
 
 	return nil
 
-}
-
-type Notification_type struct {
-	Email
-	Tg
 }
 
 func (n *Notification_type) MapInStruct(nt map[string]bool) error {
@@ -87,16 +96,8 @@ func (n *Notification_type) MapInStruct(nt map[string]bool) error {
 		}
 	}
 	if count == 0 {
-		return EqualNotificationType
+		return ErrEqualNotificationType
 	}
 
 	return nil
-}
-
-type Email struct {
-	email string
-}
-
-type Tg struct {
-	tg string
 }
