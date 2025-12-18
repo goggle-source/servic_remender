@@ -128,7 +128,7 @@ func (s *serverAPI) Update(ctx context.Context, in *reminder.UpdateRequest) (*re
 	nt2 := dto.GRPCInServicMapInSliceString(resp.NotificationType)
 
 	return &reminder.UpdateResponse{
-		Id:               int64(resp.Reminder_id),
+		Id:               int64(resp.ReminderID),
 		Name:             resp.Name,
 		Description:      resp.Description,
 		NotificationType: nt2,

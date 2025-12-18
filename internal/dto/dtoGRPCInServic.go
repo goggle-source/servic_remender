@@ -44,7 +44,6 @@ type ResponseUpdateGRPCInServic struct {
 
 type RequestDeletegRRPCInServic struct {
 	ReminderID int `json:"reminder_id"`
-	UserID     int `json:"user_id"`
 }
 
 func GRPCInServicMapInSliceString(nt map[string]bool) []string {

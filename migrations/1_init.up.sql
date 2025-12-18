@@ -3,10 +3,10 @@ CREATE TABLE IF NOT EXISTS reminder
     id  INTEGER PRIMARY KEY,
     user_id INTEGER NOT NULL,
     name_reminder TEXT NOT NULL,
-    message_reminder TEXT NOT NULL,
+    description_reminder TEXT NOT NULL,
     status_reminder TEXT NOT NULL,
     time_reminder TIME NOT NULL,
-    notificationID INTEGER REFERENCES notificationType (id)
+    notificationID INTEGER REFERENCES notificationType (id) ON DELETE CASCADE
 )
 
 CREATE TABLE IF NOT EXISTS notificationType

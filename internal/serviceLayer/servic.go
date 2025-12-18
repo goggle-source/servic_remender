@@ -2,10 +2,16 @@ package servicelayer
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"servic_remender/internal/domain"
 	"servic_remender/internal/dto"
+)
+
+const (
+	Waiting        = "reminder is wait"
+	sending        = "reminder is the senting"
+	ErrSending     = "reminder senting error"
+	SuccessRequest = "reminder sent successfully"
 )
 
 type Repository interface {
@@ -32,7 +38,7 @@ func (s *Servic) Create(ctx context.Context, req dto.RequestCreategRPCInServic) 
 
 	rem, err := domain.NewReminder(req.Name, req.UserID, req.Description, req.Timestamp, req.NotificationType)
 	if err != nil {
-		return dto.ResponseCreategRPCInServic{}, ValidateDomainErrors(op, err)
+		return dto.ResponseCreategRPCInServic{}, ValidationError(op, err)
 	}
 
 	reqDB := dto.RequestCreateServicInDB{
@@ -40,13 +46,13 @@ func (s *Servic) Create(ctx context.Context, req dto.RequestCreategRPCInServic) 
 		Description:      rem.Description,
 		TimeStamp:        rem.Timestamp,
 		UserID:           rem.UserID,
+		Status:           Waiting,
 		NotificationType: req.NotificationType,
 	}
 
 	result, err := s.DB.Create(ctx, reqDB)
 	if err != nil {
-		//добавить validate для database errors
-		return dto.ResponseCreategRPCInServic{}, fmt.Errorf("%s: %w", op, ErrInternal)
+		return dto.ResponseCreategRPCInServic{}, ValidationError(op, err)
 	}
 
 	resp.ReminderID = result.ReminderID
@@ -63,8 +69,7 @@ func (s *Servic) Get(ctx context.Context, req dto.RequestGetgRPCInServic) (resp 
 
 	result, err := s.DB.Get(ctx, reqDB)
 	if err != nil {
-		//добавить validate для database errors
-		return dto.ResponseGetgRPCInServic{}, fmt.Errorf("%s: %w", op, ErrInternal)
+		return dto.ResponseGetgRPCInServic{}, ValidationError(op, err)
 	}
 
 	resp.Name = result.Name
@@ -80,22 +85,21 @@ func (s *Servic) Update(ctx context.Context, req dto.RequestUpdateGRPCInServic) 
 
 	rem, err := domain.NewReminder(req.Name, req.UserID, req.Description, req.TimeStamp, req.NotificationType)
 	if err != nil {
-		return dto.ResponseUpdateGRPCInServic{}, ValidateDomainErrors(op, err)
+		return dto.ResponseUpdateGRPCInServic{}, ValidationError(op, err)
 	}
 
 	res := dto.RequestUpdateServicInDB{
 		Name:             rem.Name,
 		Description:      rem.Description,
 		ReminderID:       req.ReminderID,
-		UserID:           rem.UserID,
+		Status:           Waiting,
 		TimeStamp:        rem.Timestamp,
 		NotificationType: req.NotificationType,
 	}
 
 	resultDB, err := s.DB.Update(ctx, res)
 	if err != nil {
-		//добавить validate для database errors
-		return dto.ResponseUpdateGRPCInServic{}, fmt.Errorf("%s: %w", op, ErrInternal)
+		return dto.ResponseUpdateGRPCInServic{}, ValidationError(op, err)
 	}
 
 	resp.Name = resultDB.Name
@@ -117,9 +121,9 @@ func (s *Servic) Delete(ctx context.Context, req dto.RequestDeletegRRPCInServic)
 
 	err = s.DB.Delete(ctx, reqDB)
 	if err != nil {
-		//добавить validate для database errors
-		return ErrInternal
+		return ValidationError(op, err)
 	}
 
 	return nil
 }
+
